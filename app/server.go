@@ -10,6 +10,18 @@ func toRestSimpleString(s string) string {
 	return fmt.Sprintf("+%s\r\n", s)
 }
 
+func handleConnection(conn net.Conn) {
+	defer conn.Close()
+
+	for {
+		if _, err := conn.Read([]byte{}); err != nil {
+			fmt.Println("Error reading from connection: ", err.Error())
+			continue
+		}
+		conn.Write([]byte(toRestSimpleString("PONG")))
+	}
+}
+
 func main() {
 	l, err := net.Listen("tcp", "0.0.0.0:6379")
 	if err != nil {
@@ -19,20 +31,10 @@ func main() {
 
 	for {
 		conn, err := l.Accept()
-		go func() {
-			defer conn.Close()
-			if err != nil {
-				fmt.Println("Error accepting connection: ", err.Error())
-				os.Exit(1)
-			}
-
-			for {
-				if _, err := conn.Read([]byte{}); err != nil {
-					fmt.Println("Error reading from connection: ", err.Error())
-					continue
-				}
-				conn.Write([]byte(toRestSimpleString("PONG")))
-			}
-		}()
+		if err != nil {
+			fmt.Println("Error accepting connection: ", err.Error())
+			os.Exit(1)
+		}
+		go handleConnection(conn)
 	}
 }
