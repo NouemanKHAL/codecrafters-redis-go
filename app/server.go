@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"net"
 	"os"
 )
@@ -27,14 +26,10 @@ func main() {
 
 	buf := make([]byte, 256)
 	for {
-		_, err := conn.Read(buf)
-		if err != nil {
-			if err == io.EOF {
-				return
-			}
+		if _, err := conn.Read(buf); err != nil {
 			fmt.Println("Error reading from connection: ", err.Error())
-		} else {
-			conn.Write([]byte(toRestSimpleString("PONG")))
+			continue
 		}
+		conn.Write([]byte(toRestSimpleString("PONG")))
 	}
 }
