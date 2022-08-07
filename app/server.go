@@ -101,13 +101,12 @@ func handleConnection(conn net.Conn) {
 			continue
 		}
 		tokens, err := decodeRESPArray(buf)
-		fmt.Println("received request: ", tokens)
 		if err != nil {
 			log.Printf("error decoding request: %v", err)
 			continue
 		}
 		var response string
-		switch tokens[0] {
+		switch strings.ToUpper(tokens[0]) {
 		case "PING":
 			response = pingCommand()
 		case "ECHO":
