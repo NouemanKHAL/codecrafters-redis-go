@@ -37,12 +37,12 @@ func isRESPType(r rune) bool {
 }
 
 func encodeRESPSimpleString(s string) string {
-	return fmt.Sprintf("%v%s\r\n", SIMPLE_STRING, s)
+	return fmt.Sprintf("%c%s%s", SIMPLE_STRING, s, CRLF)
 }
 
 func encodeRESPBulkString(ss []string) string {
 	res := strings.Join(ss, "")
-	return fmt.Sprintf("%v%d%v%s%v", BULK_STRING, len(res), CRLF, res, CRLF)
+	return fmt.Sprintf("%c%d%s%s%s", BULK_STRING, len(res), CRLF, res, CRLF)
 }
 
 func decodeRESPArray(b []byte) ([]string, error) {
