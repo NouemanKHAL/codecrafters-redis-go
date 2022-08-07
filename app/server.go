@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -97,6 +98,9 @@ func handleConnection(conn net.Conn) {
 	buf := make([]byte, BUFFER_SIZE)
 	for {
 		if _, err := conn.Read(buf); err != nil {
+			if err == io.EOF {
+				return
+			}
 			fmt.Println("Error reading from connection: ", err.Error())
 			continue
 		}
