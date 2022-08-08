@@ -61,13 +61,13 @@ func (v *Value) Type() Type {
 func encode(v *Value) ([]byte, error) {
 	switch v.typ {
 	case INTEGER:
-		return fmt.Appendf([]byte{}, ":%d\r\n", v.data), nil
+		return []byte(fmt.Sprintf(":%d\r\n", v.data)), nil
 	case SIMPLE_STRING:
-		return fmt.Appendf([]byte{}, "+%s\r\n", v.data), nil
+		return []byte(fmt.Sprintf("+%s\r\n", v.data)), nil
 	case BULK_STRING:
-		return fmt.Appendf([]byte{}, "$%d\r\n%s\r\n", len(v.data), v.data), nil
+		return []byte(fmt.Sprintf("$%d\r\n%s\r\n", len(v.data), v.data)), nil
 	case ERROR:
-		return fmt.Appendf([]byte{}, "-%s\r\n", v.data), nil
+		return []byte(fmt.Sprintf("-%s\r\n", v.data)), nil
 	case ARRAY:
 		res := []byte{}
 		for _, elem := range v.array {
