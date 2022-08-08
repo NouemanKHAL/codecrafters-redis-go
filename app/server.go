@@ -1,17 +1,15 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
+	"build-your-own-redis/app/resp"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 )
-
-var CRLF = []byte{'\r', '\n'}
 
 const (
 	KB          = (1 << 10)
@@ -19,104 +17,33 @@ const (
 	BUFFER_SIZE = 512 * KB
 )
 
-// RESP Types
-const (
-	SIMPLE_STRING = '+'
-	ERROR         = '-'
-	INTEGER       = ':'
-	BULK_STRING   = '$'
-	ARRAY         = '*'
-)
-
-func isRESPType(r rune) bool {
-	return r == SIMPLE_STRING ||
-		r == ERROR ||
-		r == INTEGER ||
-		r == BULK_STRING ||
-		r == ARRAY
-}
-
-func encodeRESPSimpleString(s string) string {
-	return fmt.Sprintf("%c%s%s", SIMPLE_STRING, s, CRLF)
-}
-
-func encodeRESPBulkString(ss []string) string {
-	res := strings.Join(ss, "")
-	return fmt.Sprintf("%c%d%s%s%s", BULK_STRING, len(res), CRLF, res, CRLF)
-}
-
-func decodeRESPArray(b []byte) ([]string, error) {
-	if b[0] != ARRAY {
-		return nil, fmt.Errorf("invalid argument, RESP Array must start with %v", ARRAY)
-	}
-
-	curr := 0
-	nextDelim := bytes.Index(b[curr:], CRLF)
-
-	if curr+1 > curr+nextDelim {
-		return nil, fmt.Errorf("invalid argument, check RESP Array syntax %d %d", curr+1, curr+nextDelim)
-	}
-	size, err := strconv.Atoi(string(b[curr+1 : curr+nextDelim]))
-	if err != nil {
-		return nil, err
-	}
-
-	curr += nextDelim + 2
-
-	res := make([]string, size)
-
-	for i := 0; i < size; i++ {
-		var data []byte
-		nextDelim := bytes.Index(b[curr:], CRLF)
-		switch b[curr] {
-		case BULK_STRING:
-			strSize, _ := strconv.Atoi(string(b[curr+1 : curr+nextDelim]))
-			data = b[curr+nextDelim+2 : curr+nextDelim+2+strSize]
-			curr += nextDelim + 2 + strSize + 2
-		case INTEGER:
-			data = b[curr+1 : curr+nextDelim]
-			curr += nextDelim + 2
-		}
-		res[i] = string(data)
-	}
-
-	fmt.Println(res)
-	return res, nil
-}
-
-func pingCommand() string {
-	return encodeRESPSimpleString("PONG")
-}
-
-func echoCommand(in []string) string {
-	return encodeRESPBulkString(in)
-}
-
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	buf := make([]byte, BUFFER_SIZE)
 	for {
-		if _, err := conn.Read(buf); err != nil {
-			if err == io.EOF {
-				return
-			}
-			fmt.Println("Error reading from connection: ", err.Error())
-			continue
-		}
-		tokens, err := decodeRESPArray(buf)
+		req, err := resp.Decode(bufio.NewReader(conn))
 		if err != nil {
-			log.Printf("error decoding request: %v", err)
+			if err == io.EOF {
+				continue
+			}
+			log.Println("ERROR: ", err.Error())
+			conn.Write([]byte(fmt.Sprintf("ERROR: %s", err)))
 			continue
 		}
-		var response string
-		switch strings.ToUpper(tokens[0]) {
+
+		cmd := req.Array()[0].String()
+		args := req.Array()[1:]
+
+		var response []byte
+
+		switch strings.ToUpper(cmd) {
 		case "PING":
-			response = pingCommand()
+			response = resp.Ping()
 		case "ECHO":
-			response = echoCommand(tokens[1:])
+			response = resp.Echo(args[0])
 		}
-		conn.Write([]byte(response))
+
+		conn.Write(response)
 	}
 }
 
