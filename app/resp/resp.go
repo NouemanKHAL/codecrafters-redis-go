@@ -78,7 +78,7 @@ func encode(v *Value) ([]byte, error) {
 			}
 			res = append(res, val...)
 		}
-		return fmt.Appendf([]byte{}, "*%d\r\n%s\r\n", res), nil
+		return []byte(fmt.Sprintf("*%d\r\n%s\r\n", len(res), res)), nil
 	}
 	return []byte{}, fmt.Errorf("unknown type given to encode")
 }
