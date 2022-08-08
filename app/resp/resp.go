@@ -2,11 +2,7 @@ package resp
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
-	"io"
-	"log"
-	"strconv"
 )
 
 type Type rune
@@ -25,19 +21,50 @@ type Value struct {
 	array []Value
 }
 
-func NewValue(b []byte, t Type) (Value, error) {
-	if t == ARRAY {
-		byteStream := bufio.NewReader(bytes.NewReader(b))
-		val, err := decodeArray(byteStream)
-		if err != nil {
-			return Value{}, err
-		}
-		return val, nil
+func NewValue(b []byte, v []Value, t Type) (Value, error) {
+	if v != nil || t == ARRAY {
+		return Value{
+			typ:   t,
+			array: v,
+		}, nil
 	}
 	return Value{
 		typ:  t,
 		data: b,
 	}, nil
+}
+
+func NewSimpleStringValue(s string) Value {
+	v, _ := NewValue([]byte(s), nil, SIMPLE_STRING)
+	return v
+}
+
+func NewBulkStringValue(s string) Value {
+	v, _ := NewValue([]byte(s), nil, BULK_STRING)
+	return v
+}
+
+func NewIntegerValue(i int) Value {
+	v, _ := NewValue([]byte(string(i)), nil, INTEGER)
+	return v
+}
+
+func NewErrorValue(err string) Value {
+	v, _ := NewValue([]byte(err), nil, ERROR)
+	return v
+}
+
+func NewArrayValue(arr []Value) Value {
+	v, _ := NewValue(nil, arr, ARRAY)
+	return v
+}
+
+func (v *Value) Type() Type {
+	return v.typ
+}
+
+func (v *Value) Data() []byte {
+	return v.data
 }
 
 func (v *Value) Array() []Value {
@@ -47,58 +74,24 @@ func (v *Value) Array() []Value {
 	return []Value{}
 }
 
-func (v *Value) Bytes() []byte {
-	return v.data
-}
-
 func (v *Value) String() string {
 	return string(v.data)
 }
-func (v *Value) Type() Type {
-	return v.typ
-}
 
-func encode(v *Value) ([]byte, error) {
+func (v Value) Encode() ([]byte, error) {
 	switch v.typ {
 	case INTEGER:
-		return []byte(fmt.Sprintf(":%d\r\n", v.data)), nil
+		return encodeInteger(v)
 	case SIMPLE_STRING:
-		return []byte(fmt.Sprintf("+%s\r\n", v.data)), nil
+		return encodeSimpleString(v), nil
 	case BULK_STRING:
-		return []byte(fmt.Sprintf("$%d\r\n%s\r\n", len(v.data), v.data)), nil
+		return encodeBulkString(v), nil
 	case ERROR:
-		return []byte(fmt.Sprintf("-%s\r\n", v.data)), nil
+		return encodeError(v), nil
 	case ARRAY:
-		res := []byte{}
-		for _, elem := range v.array {
-			val, err := encode(&elem)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			res = append(res, val...)
-		}
-		return []byte(fmt.Sprintf("*%d\r\n%s\r\n", len(res), res)), nil
+		return encodeArray(v)
 	}
-	return []byte{}, fmt.Errorf("unknown type given to encode")
-}
-
-func encodeSimpleString(s string) []byte {
-	v := &Value{
-		typ:  SIMPLE_STRING,
-		data: []byte(s),
-	}
-	bytes, _ := encode(v)
-	return bytes
-}
-
-func encodeBulkString(s string) []byte {
-	v := &Value{
-		typ:  BULK_STRING,
-		data: []byte(s),
-	}
-	bytes, _ := encode(v)
-	return bytes
+	return []byte{}, fmt.Errorf("Encode was given an unsupported type")
 }
 
 func Decode(byteStream *bufio.Reader) (Value, error) {
@@ -114,77 +107,5 @@ func Decode(byteStream *bufio.Reader) (Value, error) {
 	case ARRAY:
 		return decodeArray(byteStream)
 	}
-	return Value{}, fmt.Errorf("unknown data type")
-}
-
-func readToken(byteStream *bufio.Reader) ([]byte, error) {
-	bytes, err := byteStream.ReadBytes('\n')
-	if err != nil {
-		return nil, err
-	}
-	// discard \r\n
-	return bytes[:len(bytes)-2], nil
-}
-
-func decodeSimpleString(byteStream *bufio.Reader) (Value, error) {
-	t, err := readToken(byteStream)
-	if err != nil {
-		return Value{}, err
-	}
-	return Value{
-		typ:  SIMPLE_STRING,
-		data: t,
-	}, nil
-}
-
-func decodeBulkString(byteStream *bufio.Reader) (Value, error) {
-	t, err := readToken(byteStream)
-	if err != nil {
-		return Value{}, nil
-	}
-
-	size, err := strconv.Atoi(string(t))
-	if err != nil {
-		return Value{}, err
-	}
-
-	str := make([]byte, size+2)
-
-	_, err = io.ReadFull(byteStream, str)
-	if err != nil {
-		return Value{}, err
-	}
-
-	// discard \r\n
-	str = str[:size]
-
-	return Value{
-		typ:  BULK_STRING,
-		data: str,
-	}, nil
-}
-
-func decodeArray(byteStream *bufio.Reader) (Value, error) {
-	t, err := readToken(byteStream)
-	if err != nil {
-		return Value{}, nil
-	}
-	length, err := strconv.Atoi(string(t))
-	if err != nil {
-		return Value{}, err
-	}
-
-	arr := make([]Value, length)
-	for i := 0; i < len(arr); i++ {
-		v, err := Decode(byteStream)
-		if err != nil {
-			return Value{}, err
-		}
-		arr[i] = v
-	}
-
-	return Value{
-		typ:   ARRAY,
-		array: arr,
-	}, nil
+	return Value{}, fmt.Errorf("Decode was given an unsupported data type")
 }

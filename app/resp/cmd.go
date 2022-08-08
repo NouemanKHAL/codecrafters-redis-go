@@ -1,18 +1,19 @@
 package resp
 
-import (
-	"log"
-)
-
 func Ping() []byte {
-	return encodeSimpleString("PONG")
+	data, err := NewSimpleStringValue("PONG").Encode()
+	if err != nil {
+		e, _ := NewErrorValue(err.Error()).Encode()
+		return e
+	}
+	return data
 }
 
 func Echo(v Value) []byte {
-	data, err := encode(&v)
+	data, err := v.Encode()
 	if err != nil {
-		log.Println("ERROR: ", err.Error())
-		return []byte{}
+		e, _ := NewErrorValue(err.Error()).Encode()
+		return e
 	}
 	return data
 }

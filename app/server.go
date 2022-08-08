@@ -11,12 +11,6 @@ import (
 	"strings"
 )
 
-const (
-	KB          = (1 << 10)
-	MB          = (KB << 10)
-	BUFFER_SIZE = 512 * KB
-)
-
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
@@ -27,7 +21,6 @@ func handleConnection(conn net.Conn) {
 				continue
 			}
 			log.Println("ERROR: ", err.Error())
-			conn.Write([]byte(fmt.Sprintf("ERROR: %s", err)))
 			continue
 		}
 
