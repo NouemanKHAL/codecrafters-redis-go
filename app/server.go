@@ -2,10 +2,10 @@ package main
 
 import (
 	"bufio"
+	"build-your-own-redis/app/cmd"
 	"build-your-own-redis/app/resp"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"os"
 	"strings"
@@ -20,20 +20,26 @@ func handleConnection(conn net.Conn) {
 			if err == io.EOF {
 				continue
 			}
-			log.Println("ERROR: ", err.Error())
+			conn.Write(resp.SendError(err))
 			continue
 		}
 
-		cmd := req.Array()[0].String()
+		if len(req.Array()) == 0 {
+			conn.Write(resp.SendError(fmt.Errorf("expected command to be RESP Array")))
+			continue
+		}
+
+		// input is a valid RESP arrray
+		command := req.Array()[0].String()
 		args := req.Array()[1:]
 
 		var response []byte
 
-		switch strings.ToUpper(cmd) {
+		switch strings.ToUpper(command) {
 		case "PING":
-			response = resp.Ping()
+			response = cmd.Ping()
 		case "ECHO":
-			response = resp.Echo(args[0])
+			response = cmd.Echo(args[0])
 		}
 
 		conn.Write(response)

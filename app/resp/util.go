@@ -110,3 +110,8 @@ func decodeArray(byteStream *bufio.Reader) (Value, error) {
 		array: arr,
 	}, nil
 }
+
+func SendError(err error) []byte {
+	e := NewErrorValue("ERR - " + err.Error())
+	return encodeError(e)
+}
