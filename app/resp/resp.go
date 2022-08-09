@@ -5,14 +5,37 @@ import (
 	"fmt"
 )
 
-type Type rune
+type Type struct {
+	slug rune
+}
 
-const (
-	SIMPLE_STRING Type = '+'
-	INTEGER       Type = ':'
-	BULK_STRING   Type = '$'
-	ARRAY         Type = '*'
-	ERROR         Type = '-'
+func (t Type) Rune() rune {
+	return t.slug
+}
+
+func GetType(r rune) (Type, error) {
+	switch r {
+	case SIMPLE_STRING.slug:
+		return SIMPLE_STRING, nil
+	case BULK_STRING.slug:
+		return BULK_STRING, nil
+	case INTEGER.slug:
+		return INTEGER, nil
+	case ERROR.slug:
+		return ERROR, nil
+	case ARRAY.slug:
+		return ARRAY, nil
+	}
+	return INVALID_TYPE, fmt.Errorf("unknown type: %c", r)
+}
+
+var (
+	INVALID_TYPE  = Type{}
+	SIMPLE_STRING = Type{'+'}
+	INTEGER       = Type{':'}
+	BULK_STRING   = Type{'$'}
+	ARRAY         = Type{'*'}
+	ERROR         = Type{'-'}
 )
 
 type Value struct {
@@ -45,7 +68,7 @@ func NewBulkStringValue(s string) Value {
 }
 
 func NewIntegerValue(i int) Value {
-	v, _ := NewValue([]byte(string(i)), nil, INTEGER)
+	v, _ := NewValue([]byte(fmt.Sprint(i)), nil, INTEGER)
 	return v
 }
 
@@ -99,13 +122,20 @@ func Decode(byteStream *bufio.Reader) (Value, error) {
 	if err != nil {
 		return Value{}, err
 	}
-	switch Type(b) {
+
+	bType, err := GetType(rune(b))
+	if err != nil {
+		return Value{}, err
+	}
+
+	switch bType {
 	case SIMPLE_STRING:
 		return decodeSimpleString(byteStream)
 	case BULK_STRING:
 		return decodeBulkString(byteStream)
 	case ARRAY:
 		return decodeArray(byteStream)
+		// TODO: add support for INTEGER and ERROR types
 	}
-	return Value{}, fmt.Errorf("Decode was given an unsupported data type")
+	return Value{}, fmt.Errorf("Decode was given an unsupported data type %c: ", bType)
 }
