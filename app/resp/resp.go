@@ -142,6 +142,8 @@ func Decode(byteStream *bufio.Reader) (Value, error) {
 		return decodeArray(byteStream)
 	case INTEGER:
 		return decodeInteger(byteStream)
+	case ERROR:
+		return decodeError(byteStream)
 	}
 	return Value{}, fmt.Errorf("Decode was given an unsupported data type %c: ", bType)
 }

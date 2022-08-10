@@ -69,6 +69,14 @@ func decodeInteger(byteStream *bufio.Reader) (Value, error) {
 	return NewIntegerValue(num), nil
 }
 
+func decodeError(byteStream *bufio.Reader) (Value, error) {
+	t, err := readToken(byteStream)
+	if err != nil {
+		return Value{}, err
+	}
+	return NewErrorValue(string(t)), nil
+}
+
 func decodeBulkString(byteStream *bufio.Reader) (Value, error) {
 	t, err := readToken(byteStream)
 	if err != nil {
