@@ -53,10 +53,20 @@ func decodeSimpleString(byteStream *bufio.Reader) (Value, error) {
 	if err != nil {
 		return Value{}, err
 	}
-	return Value{
-		typ:  SIMPLE_STRING,
-		data: t,
-	}, nil
+	return NewSimpleStringValue(string(t)), nil
+}
+
+func decodeInteger(byteStream *bufio.Reader) (Value, error) {
+	t, err := readToken(byteStream)
+	if err != nil {
+		return Value{}, nil
+	}
+
+	num, err := strconv.Atoi(string(t))
+	if err != nil {
+		return Value{}, err
+	}
+	return NewIntegerValue(num), nil
 }
 
 func decodeBulkString(byteStream *bufio.Reader) (Value, error) {
@@ -80,10 +90,7 @@ func decodeBulkString(byteStream *bufio.Reader) (Value, error) {
 	// discard \r\n
 	str = str[:size]
 
-	return Value{
-		typ:  BULK_STRING,
-		data: str,
-	}, nil
+	return NewBulkStringValue(string(str)), nil
 }
 
 func decodeArray(byteStream *bufio.Reader) (Value, error) {
@@ -105,13 +112,14 @@ func decodeArray(byteStream *bufio.Reader) (Value, error) {
 		arr[i] = v
 	}
 
-	return Value{
-		typ:   ARRAY,
-		array: arr,
-	}, nil
+	return NewArrayValue(arr), nil
 }
 
 func SendError(err error) []byte {
 	e := NewErrorValue("ERR - " + err.Error())
 	return encodeError(e)
+}
+
+func SendNil() []byte {
+	return []byte("$-1\r\n")
 }

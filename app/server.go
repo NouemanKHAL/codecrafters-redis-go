@@ -41,7 +41,7 @@ func handleConnection(conn net.Conn) {
 		case "ECHO":
 			response = cmd.Echo(args[0])
 		case "SET":
-			response = cmd.Set(args[0], args[1])
+			response = cmd.Set(args)
 		case "GET":
 			response = cmd.Get(args[0])
 		}

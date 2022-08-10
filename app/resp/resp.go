@@ -3,6 +3,7 @@ package resp
 import (
 	"bufio"
 	"fmt"
+	"strconv"
 )
 
 type Type struct {
@@ -101,6 +102,10 @@ func (v *Value) String() string {
 	return string(v.data)
 }
 
+func (v *Value) Integer() (int, error) {
+	return strconv.Atoi(string(v.data))
+}
+
 func (v Value) Encode() ([]byte, error) {
 	switch v.typ {
 	case INTEGER:
@@ -135,7 +140,8 @@ func Decode(byteStream *bufio.Reader) (Value, error) {
 		return decodeBulkString(byteStream)
 	case ARRAY:
 		return decodeArray(byteStream)
-		// TODO: add support for INTEGER and ERROR types
+	case INTEGER:
+		return decodeInteger(byteStream)
 	}
 	return Value{}, fmt.Errorf("Decode was given an unsupported data type %c: ", bType)
 }

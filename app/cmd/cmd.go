@@ -2,7 +2,8 @@ package cmd
 
 import (
 	"build-your-own-redis/app/resp"
-	"fmt"
+	"strings"
+	"time"
 )
 
 var store = make(map[string]resp.Value)
@@ -23,9 +24,27 @@ func Echo(v resp.Value) []byte {
 	return data
 }
 
-func Set(k, v resp.Value) []byte {
-	var response []byte
+func Set(args []resp.Value) []byte {
+	var k, v resp.Value
+	var opt string
+	var expiry int
 	var err error
+
+	if len(args) >= 2 {
+		k = args[0]
+		v = args[1]
+	}
+
+	if len(args) == 4 {
+		opt = args[2].String()
+		expiry, err = args[3].Integer()
+		if err != nil {
+			return resp.SendError(err)
+		}
+	}
+
+	var response []byte
+
 	if old, ok := store[k.String()]; ok {
 		response, err = resp.NewBulkStringValue(old.String()).Encode()
 		if err != nil {
@@ -40,7 +59,20 @@ func Set(k, v resp.Value) []byte {
 	if v.Type() != resp.BULK_STRING {
 		v = resp.NewBulkStringValue(v.String())
 	}
+
 	store[k.String()] = v
+
+	if strings.ToUpper(opt) == "PX" && expiry > 0 {
+		go func() {
+			ch := time.After(time.Duration(expiry) * time.Second)
+			for {
+				select {
+				case <-ch:
+					delete(store, k.String())
+				}
+			}
+		}()
+	}
 	return response
 }
 
@@ -52,5 +84,5 @@ func Get(k resp.Value) []byte {
 		}
 		return bytes
 	}
-	return resp.SendError(fmt.Errorf("key not found"))
+	return resp.SendNil()
 }
