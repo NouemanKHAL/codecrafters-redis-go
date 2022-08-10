@@ -40,6 +40,10 @@ func handleConnection(conn net.Conn) {
 			response = cmd.Ping()
 		case "ECHO":
 			response = cmd.Echo(args[0])
+		case "SET":
+			response = cmd.Set(args[0], args[1])
+		case "GET":
+			response = cmd.Get(args[0])
 		}
 
 		conn.Write(response)
