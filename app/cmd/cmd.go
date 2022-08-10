@@ -64,7 +64,7 @@ func Set(args []resp.Value) []byte {
 
 	if strings.ToUpper(opt) == "PX" && expiry > 0 {
 		go func() {
-			ch := time.After(time.Duration(expiry) * time.Second)
+			ch := time.After(time.Duration(expiry) * time.Millisecond)
 			for {
 				select {
 				case <-ch:
